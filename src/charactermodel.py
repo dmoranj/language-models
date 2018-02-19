@@ -1,6 +1,7 @@
 from keras.layers import *
 from keras.models import Model, load_model
 from keras.optimizers import Adam
+import pandas as pd
 import numpy as np
 import tokenizedataset as td
 from constants import *
@@ -24,12 +25,12 @@ def create_model(input_shape, hidden_units):
     return model
 
 
-def fit_model(model, inputs, Y, batch_size, epochs):
+def fit_model(model, inputs, Y, batch_size, epochs, learning_rate):
     print('Fitting model with summary: ')
-    opt = Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, decay=0.01)
+    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, decay=0.01)
     model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=["accuracy"])
-    model.fit(inputs, Y, batch_size=batch_size, epochs=epochs)
-
+    history = model.fit(inputs, Y, batch_size=batch_size, epochs=epochs, verbose=2)
+    return history
 
 def prepaire_lines(lines):
     for line in lines:
@@ -106,6 +107,21 @@ def save_alphabet(path, alphabet):
         json.dump(alphabet, f)
 
 
+def save_model(model, history, options):
+    model.save(options.modelPath)
+
+    epochs = {
+        'accuracy': history.history['acc'],
+        'loss': history.history['loss']
+    }
+
+    df = pd.DataFrame(epochs)
+    df['rate'] = options.learningRate
+    df['minibatch'] = options.minibatchSize
+
+    df.to_csv(options.statsPath, mode='a', header=False)
+
+
 def train_model(options):
     if options.load:
         alphabet = load_alphabet(options.alphabetPath)
@@ -120,8 +136,9 @@ def train_model(options):
     for i in range(options.iterations):
         for lines in td.generate_line_batch(options.datasetPath, options.batchSize):
             train = generate_datasets(lines, alphabet, options)
-            fit_model(model, {"X": train['X']}, train['Y'], options.minibatchSize, options.epochs)
-            model.save(options.modelPath)
+            history = fit_model(model, {"X": train['X']}, train['Y'], options.minibatchSize,
+                                options.epochs, options.learningRate)
+            save_model(model, history, options)
 
 
 def load_alphabet(path):
@@ -166,7 +183,7 @@ def one_hot_char(index, alphabet):
     return ohc
 
 
-def command_generate(options):
+def generate(options):
     model = load_model(options.modelPath)
 
     _, seq_length, char_length = model.input.shape

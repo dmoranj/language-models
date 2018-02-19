@@ -1,0 +1,57 @@
+---
+title: "Character Model Training Report"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+characterDataPath <- './results/charmodel.csv'
+
+```
+
+## Training data
+
+```{r, echo=FALSE}
+loadCharacterData <- function() {
+  data <- as.data.frame(read.csv(characterDataPath, header=FALSE, col.names=c('epoch', 'accuracy', 'loss', 'rate', 'minibatch')))
+  data$index <- as.numeric(rownames(data))
+  data
+}
+
+characterData <- loadCharacterData()
+
+characterData %>%
+  select(index, accuracy, loss) %>%
+  arrange(desc(accuracy), desc(loss)) %>%
+  head(10)
+```
+
+```{r, echo=FALSE}
+characterData %>%
+  summarize(maxAcc = max(accuracy),minAcc=min(accuracy), maxLoss = max(loss), minLoss=min(loss), epochs=max(index))
+```
+
+
+
+
+## Training plots
+
+```{r echo=FALSE, fig.width=10, fig.height = 8}
+meanAcc <- mean(characterData$accuracy)
+meanLoss <- mean(characterData$loss)
+  
+characterData %>%
+  select(index, accuracy, loss) %>%
+  gather('metric', 'value', -index) %>%
+  mutate(means = ifelse(metric == 'accuracy', meanAcc, meanLoss)) %>%
+  ggplot(aes(x=index, y=value)) +
+    facet_grid(metric ~ .) +
+    geom_smooth() +
+    geom_line(aes(y=means), color='red', linetype='dashed') +
+    geom_text(aes(x=min(index), y=means, label=round(means, 3)), angle=30, hjust="left", size=4.2, fontface="plain", family="courier")
+```

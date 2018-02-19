@@ -3,12 +3,14 @@ import charactermodel as cmodel
 
 DEFAULT_EPOCHS=10
 DEFAULT_ITERATIONS=5
+DEFAULT_LEARNING_RATE=0.0001
 GRU_HIDDEN_UNITS = 128
 DEFAULT_BATCH_SIZE = 7000
 DEFAULT_MINIBATCH_SIZE = 128
 MAX_LENGTH = 750
 SAVE_PATH = './results/'
-MODEL_FILE = SAVE_PATH + 'charmodel.h5'
+MODEL_FILE = SAVE_PATH + 'charmodelgru.h5'
+STATS_FILE = SAVE_PATH + 'charmodelgru.csv'
 ALPHABET_FILE = SAVE_PATH + 'alphabet.json'
 
 def generateDescription():
@@ -28,14 +30,18 @@ def generateDescription():
         may arise (7000 lines have shown to be a conservative well-behaved number). Files are loaded as they are needed
         in a random order (potentially different for each iteration).
         
+        The model is saved at the end of each iteration.
     """
 
 def defineParser():
     parser = argparse.ArgumentParser(description=generateDescription())
     parser.add_argument('command', type=str, help='Command to execute: train, evaluate or generate')
-    parser.add_argument('datasetPath', type=str, help='Path to the dataset folder')
+    parser.add_argument('--datasetPath', dest='datasetPath', type=str,
+                        help='Path to the dataset folder')
     parser.add_argument('--modelPath', dest='modelPath', type=str, default=MODEL_FILE,
                         help='Path to save the model (for training) or load it (in generation and evaluation)')
+    parser.add_argument('--statsPath', dest='statsPath', type=str, default=STATS_FILE,
+                        help='Path to save the model statistics [TRAIN]')
     parser.add_argument('--alphabetPath', dest='alphabetPath', type=str, default=ALPHABET_FILE,
                         help='Path to save the alphabet (for training) or load it (in generation and evaluation)')
     parser.add_argument('--maxLength', dest='maxLength', type=int, default=MAX_LENGTH,
@@ -44,6 +50,8 @@ def defineParser():
                         help='Maximum batch size [TRAIN].')
     parser.add_argument('--minibatchSize', dest='minibatchSize', type=int, default=DEFAULT_MINIBATCH_SIZE,
                         help='Maximum minibatch size [TRAIN].')
+    parser.add_argument('--learningRate', dest='learningRate', type=float, default=DEFAULT_LEARNING_RATE,
+                        help='Learning rate [TRAIN].')
     parser.add_argument('--hidden', dest='hidden', type=int, default=GRU_HIDDEN_UNITS,
                         help='Number of hidden units per RNN layer')
     parser.add_argument('--epochs', dest='epochs', type=int, default=DEFAULT_EPOCHS,
@@ -55,8 +63,6 @@ def defineParser():
 
     return parser
 
-    #train_model('/home/dani/Documentos/Proyectos/MachineLearning/datasets/Tolkien', GRU_HIDDEN_UNITS, 7000, 128, 50, True)
-
 
 def start():
     args = defineParser().parse_args()
@@ -66,7 +72,7 @@ def start():
     elif args.command == 'evaluate':
         print('Evaluating')
     elif args.command == 'generate':
-        print('generating')
+        cmodel.generate(args)
     else:
         print('Unknown command.')
 
