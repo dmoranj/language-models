@@ -62,6 +62,7 @@ def load_folder(folder):
 
 def generate_line_batch(input_folder, max_lines):
     files = glob.glob(os.path.join(input_folder, "*.txt"))
+    np.random.shuffle(files)
 
     current_batch = []
 
