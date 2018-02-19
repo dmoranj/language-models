@@ -1,5 +1,6 @@
 import argparse
 import charactermodel as cmodel
+import time
 
 DEFAULT_EPOCHS=10
 DEFAULT_ITERATIONS=5
@@ -70,6 +71,8 @@ def defineParser():
 def start():
     args = defineParser().parse_args()
 
+    start = time.time()
+
     if args.command == 'train':
         cmodel.train_model(args)
     elif args.command == 'evaluate':
@@ -78,6 +81,9 @@ def start():
         cmodel.generate(args)
     else:
         print('Unknown command.')
+
+    end = time.time()
+    print('\n\nCommand execution time: {0:.2f} min'.format((end - start)/60))
 
 start()
 
