@@ -1,5 +1,6 @@
 import re
 import os
+import numpy as np
 import glob
 
 MIN_TOKEN_LENGTH = 3
@@ -35,6 +36,7 @@ def tokenize(text):
 
     return word_list
 
+
 def load_and_tokenize(textpath):
     with open(textpath, 'r') as t:
         text = t.read()
@@ -57,3 +59,29 @@ def load_folder(folder):
 
     return all_tokens
 
+
+def generate_line_batch(input_folder, max_lines):
+    files = glob.glob(os.path.join(input_folder, "*.txt"))
+
+    current_batch = []
+
+    for file in files:
+        print('Loading text from: ' + file)
+
+        textpath = os.path.join(input_folder, file)
+        tokens = []
+        tokens = load_and_tokenize(textpath)
+        token_index = 0
+
+        while token_index < len(tokens):
+            current_batch.append(tokens[token_index])
+
+            if len(current_batch) >= max_lines:
+                yield current_batch
+                current_batch = []
+
+            token_index += 1
+
+
+    if len(current_batch) < max_lines:
+        yield current_batch

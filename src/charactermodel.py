@@ -1,21 +1,16 @@
 from keras.layers import *
 from keras.models import Model, load_model
 from keras.optimizers import Adam
-import tensorflow as tf
 import numpy as np
 import tokenizedataset as td
 from constants import *
 import json
 
-GRU_HIDDEN_UNITS = 128
-MAX_LENGTH = 750
-SAVE_PATH = './results/'
-MODEL_FILE = SAVE_PATH + 'charmodel.h5'
-ALPHABET_FILE = SAVE_PATH + 'alphabet.json'
+ALPHABET_CHARS = "abcdefghijklmnopqrstuvwxyz?!0123456789;:,.()-_'\""
 
 def create_model(input_shape, hidden_units):
     print("* Creating model")
-    
+
     _, max_length, char_length = input_shape
 
     char_input = Input(shape=(max_length, char_length), name="X")
@@ -31,7 +26,6 @@ def create_model(input_shape, hidden_units):
 
 def fit_model(model, inputs, Y, batch_size, epochs):
     print('Fitting model with summary: ')
-    model.summary()
     opt = Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, decay=0.01)
     model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=["accuracy"])
     model.fit(inputs, Y, batch_size=batch_size, epochs=epochs)
@@ -45,14 +39,17 @@ def prepaire_lines(lines):
     return lines
 
 
-def onehot_line(line, alphabet):
+def onehot_line(line, alphabet, options):
     full_line = ' '.join(line)
 
-    line = np.zeros((MAX_LENGTH, alphabet['length']))
+    line = np.zeros((options.maxLength, alphabet['length']))
 
     for i, c in enumerate(full_line):
-        if i >= MAX_LENGTH:
+        if i >= options.maxLength:
             break
+
+        if not c in alphabet['c2i'].keys():
+            c = '#'
 
         index = alphabet['c2i'][c]
         line[i, index] = 1
@@ -60,14 +57,12 @@ def onehot_line(line, alphabet):
     return line
 
 
-def get_alphabet(lines):
+def create_alphabet():
     charset = set()
 
-    for line in lines:
-        for word in line:
-            [charset.add(c) for c in word]
-
+    [charset.add(c) for c in ALPHABET_CHARS]
     charset.add(' ')
+    charset.add('#')
     charlist = list(charset)
 
     alphabet = {
@@ -79,14 +74,12 @@ def get_alphabet(lines):
     return alphabet
 
 
-def convert_to_onehot(prepaired_lines):
-    alphabet = get_alphabet(prepaired_lines)
-
-    oh_lines = [onehot_line(line, alphabet) for line in prepaired_lines]
+def convert_to_onehot(prepaired_lines, alphabet, options):
+    oh_lines = [onehot_line(line, alphabet, options) for line in prepaired_lines]
     line_array = np.array(oh_lines)
     np.random.shuffle(line_array)
 
-    return line_array, alphabet
+    return line_array
 
 
 def initialize_dataset(lines):
@@ -99,13 +92,13 @@ def initialize_dataset(lines):
     }
 
 
-def generate_datasets(lines, hidden_units):
+def generate_datasets(lines, alphabet, options):
     print('* Generating datasets')
     prepaired_lines = prepaire_lines(lines)
-    lines_oh, alphabet = convert_to_onehot(prepaired_lines)
+    lines_oh = convert_to_onehot(prepaired_lines, alphabet, options)
     final_lines = initialize_dataset(lines_oh)
 
-    return final_lines, alphabet
+    return final_lines
 
 
 def save_alphabet(path, alphabet):
@@ -113,17 +106,22 @@ def save_alphabet(path, alphabet):
         json.dump(alphabet, f)
 
 
-def train_model(input_path, hidden_units, max_examples, batch_size, epochs):
-    lines = td.load_folder(input_path)[0:max_examples]
-    train, alphabet = generate_datasets(lines, hidden_units)
-    model = create_model(train['X'].shape, hidden_units)
-    fit_model(model, {"X": train['X']}, train['Y'], batch_size, epochs)
-    model.save(MODEL_FILE)
-    save_alphabet(ALPHABET_FILE, alphabet)
+def train_model(options):
+    if options.load:
+        alphabet = load_alphabet(options.alphabetPath)
+        model = load_model(options.modelPath)
+    else:
+        alphabet = create_alphabet()
+        model = create_model((options.batchSize, options.maxLength, alphabet.length), options.hidden)
+        model.summary()
 
+    save_alphabet(options.alphabetPath, alphabet)
 
-def command_train():
-    train_model('/home/dani/Documentos/Proyectos/MachineLearning/datasets/Tolkien', GRU_HIDDEN_UNITS, 12000, 256, 50)
+    for i in range(options.iterations):
+        for lines in td.generate_line_batch(options.datasetPath, options.batchSize):
+            train = generate_datasets(lines, alphabet, options)
+            fit_model(model, {"X": train['X']}, train['Y'], options.minibatchSize, options.epochs)
+            model.save(options.modelPath)
 
 
 def load_alphabet(path):
@@ -156,22 +154,10 @@ def create_prediction_model(model):
 
 
 def decode(x, alphabet):
-    draw = np.random.uniform()
+    p = x.tolist()[0]
+    index = np.random.choice(range(len(p)), p=p/np.sum(p))
 
-    accumulator = 0
-    index = -1
-
-    for i, value in enumerate(x.tolist()[0]):
-        accumulator += value
-
-        if draw < accumulator:
-            index = i
-            break
-
-    if index >= 0:
-        return index, alphabet['i2c'][index]
-    else:
-        return -1, '#'
+    return index, alphabet['i2c'][index]
 
 
 def one_hot_char(index, alphabet):
@@ -180,39 +166,50 @@ def one_hot_char(index, alphabet):
     return ohc
 
 
-def command_generate():
-    model = load_model(MODEL_FILE)
+def command_generate(options):
+    model = load_model(options.modelPath)
 
     _, seq_length, char_length = model.input.shape
 
     prediction_model = create_prediction_model(model)
-    alphabet = load_alphabet(ALPHABET_FILE)
+    alphabet = load_alphabet(options.alphabetPath)
 
-    a = np.zeros((1, GRU_HIDDEN_UNITS))
-    c = np.zeros((1, GRU_HIDDEN_UNITS))
-    x = np.zeros((1, char_length))
+    a0 = np.zeros((1, options.hidden))
+    c0 = np.zeros((1, options.hidden))
+    x0 = np.zeros((1, char_length))
 
     output = []
     maximums = []
 
-    for i in range(MAX_LENGTH):
-        a = np.reshape(a, (1, 1, GRU_HIDDEN_UNITS))
-        c = np.reshape(c, (1, 1, GRU_HIDDEN_UNITS))
-        x = np.reshape(x, (1, 1, char_length))
+    for j in range(10):
+        sentence = []
 
-        x, a, c = prediction_model.predict([x, a, c])
+        a = a0
+        c = c0
+        x = x0
 
-        index, out = decode(x, alphabet)
-        output.append(out)
-        maximums.append(np.max(x))
+        for i in range(options.maxLength):
+            a = np.reshape(a, (1, 1, options.hidden))
+            c = np.reshape(c, (1, 1, options.hidden))
+            x = np.reshape(x, (1, 1, char_length))
 
-        x = one_hot_char(index, alphabet)
+            x, a, c = prediction_model.predict([x, a, c])
 
-    print(''.join(output))
-    print(maximums)
-    print('Maximum probability= {}'.format(max(maximums)))
+            index, out = decode(x, alphabet)
+            sentence.append(out)
+
+            if out == '.':
+                output.append(''.join(sentence))
+                break
+
+            maximums.append(np.max(x))
+
+            x = one_hot_char(index, alphabet)
+
+    print('Your author says:\n\n')
+    print('\n'.join(output))
+    print('\nMaximum probability= {}'.format(max(maximums)))
     print('Alphabet length= {}'.format(alphabet['length']))
     print('Non-weigthed base probability= {}'.format(1/alphabet['length']))
 
 
-command_generate()
