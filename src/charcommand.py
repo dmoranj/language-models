@@ -4,6 +4,7 @@ import charactermodel as cmodel
 DEFAULT_EPOCHS=10
 DEFAULT_ITERATIONS=5
 DEFAULT_LEARNING_RATE=0.0001
+DEFAULT_RNN_TYPE='LSTM'
 GRU_HIDDEN_UNITS = 128
 DEFAULT_BATCH_SIZE = 7000
 DEFAULT_MINIBATCH_SIZE = 128
@@ -52,6 +53,8 @@ def defineParser():
                         help='Maximum minibatch size [TRAIN].')
     parser.add_argument('--learningRate', dest='learningRate', type=float, default=DEFAULT_LEARNING_RATE,
                         help='Learning rate [TRAIN].')
+    parser.add_argument('--rnnType', dest='rnnType', type=str, default=DEFAULT_RNN_TYPE,
+                        help='Default type of RNN Cell: LSTM or GRU [TRAIN].')
     parser.add_argument('--hidden', dest='hidden', type=int, default=GRU_HIDDEN_UNITS,
                         help='Number of hidden units per RNN layer')
     parser.add_argument('--epochs', dest='epochs', type=int, default=DEFAULT_EPOCHS,

@@ -78,6 +78,7 @@ def generate_line_batch(input_folder, max_lines):
             current_batch.append(tokens[token_index])
 
             if len(current_batch) >= max_lines:
+                np.random.shuffle(current_batch)
                 yield current_batch
                 current_batch = []
 

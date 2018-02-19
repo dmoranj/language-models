@@ -9,28 +9,32 @@ import json
 
 ALPHABET_CHARS = "abcdefghijklmnopqrstuvwxyz?!0123456789;:,.()-_'\""
 
-def create_model(input_shape, hidden_units):
-    print("* Creating model")
+def create_model(input_shape, hidden_units, unit_type, learning_rate):
+    print("* Creating new model")
 
     _, max_length, char_length = input_shape
 
     char_input = Input(shape=(max_length, char_length), name="X")
 
-    a = LSTM(hidden_units, return_sequences=True)(char_input)
+    if unit_type == "LSTM":
+        a = LSTM(hidden_units, return_sequences=True)(char_input)
+    else:
+        a = GRU(hidden_units, return_sequences=True)(char_input)
+
     x = TimeDistributed(Dense(char_length))(a)
     x = TimeDistributed(Activation('softmax'))(x)
 
     model = Model(inputs=[char_input], outputs=[x])
+    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, decay=0.01)
+    model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=["accuracy"])
 
     return model
 
 
-def fit_model(model, inputs, Y, batch_size, epochs, learning_rate):
-    print('Fitting model with summary: ')
-    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, decay=0.01)
-    model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=["accuracy"])
+def fit_model(model, inputs, Y, batch_size, epochs):
     history = model.fit(inputs, Y, batch_size=batch_size, epochs=epochs, verbose=2)
     return history
+
 
 def prepaire_lines(lines):
     for line in lines:
@@ -128,7 +132,8 @@ def train_model(options):
         model = load_model(options.modelPath)
     else:
         alphabet = create_alphabet()
-        model = create_model((options.batchSize, options.maxLength, alphabet.length), options.hidden)
+        model = create_model((options.batchSize, options.maxLength, alphabet['length']), options.hidden,
+                             options.rnnType, options.learningRate)
         model.summary()
 
     save_alphabet(options.alphabetPath, alphabet)
@@ -136,8 +141,7 @@ def train_model(options):
     for i in range(options.iterations):
         for lines in td.generate_line_batch(options.datasetPath, options.batchSize):
             train = generate_datasets(lines, alphabet, options)
-            history = fit_model(model, {"X": train['X']}, train['Y'], options.minibatchSize,
-                                options.epochs, options.learningRate)
+            history = fit_model(model, {"X": train['X']}, train['Y'], options.minibatchSize, options.epochs)
             save_model(model, history, options)
 
 
@@ -149,7 +153,7 @@ def load_alphabet(path):
         return alphabet
 
 
-def create_prediction_model(model):
+def create_prediction_model(model, rnn_type):
     _, seq_length, char_length = model.input.shape
 
     input_char = Input((1, char_length.value), name='X')
@@ -158,14 +162,21 @@ def create_prediction_model(model):
     dense_layer = model.layers[2].layer
     activation_layer = model.layers[3].layer
 
-    a0 = Input((1, rnn_cell.units), name='a0')
     c0 = Input((1, rnn_cell.units), name='c0')
 
-    x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[a0, c0])
+    if rnn_type == 'LSTM':
+        a0 = Input((1, rnn_cell.units), name='a0')
+        x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[a0, c0])
+    else:
+        x, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[c0])
+
     x = dense_layer(x)
     x = activation_layer(x)
 
-    new_model = Model(inputs=[input_char, a0, c0], outputs=[x, a, c])
+    if rnn_type == 'LSTM':
+        new_model = Model(inputs=[input_char, a0, c0], outputs=[x, a, c])
+    else:
+        new_model = Model(inputs=[input_char, c0], outputs=[x, c])
 
     return new_model
 
@@ -188,10 +199,12 @@ def generate(options):
 
     _, seq_length, char_length = model.input.shape
 
-    prediction_model = create_prediction_model(model)
+    prediction_model = create_prediction_model(model, options.rnnType)
     alphabet = load_alphabet(options.alphabetPath)
 
-    a0 = np.zeros((1, options.hidden))
+    if options.rnnType == 'LSTM':
+        a0 = np.zeros((1, options.hidden))
+
     c0 = np.zeros((1, options.hidden))
     x0 = np.zeros((1, char_length))
 
@@ -201,16 +214,21 @@ def generate(options):
     for j in range(10):
         sentence = []
 
-        a = a0
+        if options.rnnType == 'LSTM':
+            a = a0
+
         c = c0
         x = x0
 
         for i in range(options.maxLength):
-            a = np.reshape(a, (1, 1, options.hidden))
             c = np.reshape(c, (1, 1, options.hidden))
             x = np.reshape(x, (1, 1, char_length))
 
-            x, a, c = prediction_model.predict([x, a, c])
+            if options.rnnType == 'LSTM':
+                a = np.reshape(a, (1, 1, options.hidden))
+                x, a, c = prediction_model.predict([x, a, c])
+            else:
+                x, c = prediction_model.predict([x, c])
 
             index, out = decode(x, alphabet)
             sentence.append(out)
