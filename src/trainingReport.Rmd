@@ -35,10 +35,10 @@ top10
 
 ```{r, echo=FALSE}
 topIndex <- max(top10$index)
-promising <- sum(top10$index - topIndex:(topIndex - 9))/topIndex
+disappointment <- -sum(top10$index - topIndex:(topIndex - 9))/topIndex
 
 characterData %>%
-  summarize(maxAcc = max(accuracy),minAcc=min(accuracy), maxLoss = max(loss), minLoss=min(loss), epochs=max(index), promising=promising)
+  summarize(maxAcc = max(accuracy),minAcc=min(accuracy), maxLoss = max(loss), minLoss=min(loss), epochs=max(index), disappointment=disappointment)
 ```
 
 

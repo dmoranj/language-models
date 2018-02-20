@@ -177,6 +177,9 @@ def create_prediction_model(model, rnn_type, layers):
 
         for i in range(layers - 1):
             rnn_cell = model.layers[2 + i].cell
+            x = Reshape((1, x.shape[2].value))(x)
+            a = Reshape((1, a.shape[2].value))(a)
+            c = Reshape((1, c.shape[2].value))(c)
             x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[a, c])
 
     else:
@@ -202,7 +205,7 @@ def create_prediction_model(model, rnn_type, layers):
 def decode(x, alphabet):
     p = x.tolist()[0]
     index = np.random.choice(range(len(p)), p=p/np.sum(p))
-
+    index = np.argmax(p)
     return index, alphabet['i2c'][index]
 
 
@@ -258,6 +261,9 @@ def generate(options):
             maximums.append(np.max(x))
 
             x = one_hot_char(index, alphabet)
+
+        if len(sentence) > 0:
+            output.append(''.join(sentence) + '.')
 
     print('Your author says:\n\n')
     print('\n'.join(output))
