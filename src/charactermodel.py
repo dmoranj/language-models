@@ -3,13 +3,14 @@ from keras.models import Model, load_model
 from keras.optimizers import Adam
 import pandas as pd
 import numpy as np
+import tensorflow as tf
 import tokenizedataset as td
 from constants import *
 import json
 
 ALPHABET_CHARS = "abcdefghijklmnopqrstuvwxyz?!0123456789;:,.()-_'\""
 
-def create_model(input_shape, hidden_units, unit_type, learning_rate):
+def create_model(input_shape, hidden_units, unit_type, learning_rate, layers):
     print("* Creating new model")
 
     _, max_length, char_length = input_shape
@@ -18,8 +19,14 @@ def create_model(input_shape, hidden_units, unit_type, learning_rate):
 
     if unit_type == "LSTM":
         a = LSTM(hidden_units, return_sequences=True)(char_input)
+
+        for i in range(layers -1):
+            a = LSTM(hidden_units, return_sequences=True)(a)
     else:
         a = GRU(hidden_units, return_sequences=True)(char_input)
+
+        for i in range(layers -1):
+            a = GRU(hidden_units, return_sequences=True)(a)
 
     x = TimeDistributed(Dense(char_length))(a)
     x = TimeDistributed(Activation('softmax'))(x)
@@ -133,7 +140,7 @@ def train_model(options):
     else:
         alphabet = create_alphabet()
         model = create_model((options.batchSize, options.maxLength, alphabet['length']), options.hidden,
-                             options.rnnType, options.learningRate)
+                             options.rnnType, options.learningRate, options.rnnLayers)
         model.summary()
 
     save_alphabet(options.alphabetPath, alphabet)
@@ -153,22 +160,33 @@ def load_alphabet(path):
         return alphabet
 
 
-def create_prediction_model(model, rnn_type):
+def create_prediction_model(model, rnn_type, layers):
     _, seq_length, char_length = model.input.shape
 
     input_char = Input((1, char_length.value), name='X')
 
     rnn_cell = model.layers[1].cell
-    dense_layer = model.layers[2].layer
-    activation_layer = model.layers[3].layer
+    dense_layer = model.layers[layers + 1].layer
+    activation_layer = model.layers[layers + 2].layer
 
     c0 = Input((1, rnn_cell.units), name='c0')
 
     if rnn_type == 'LSTM':
         a0 = Input((1, rnn_cell.units), name='a0')
         x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[a0, c0])
+
+        for i in range(layers - 1):
+            rnn_cell = model.layers[2 + i].cell
+            x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[a, c])
+
     else:
         x, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[c0])
+
+        for i in range(layers - 1):
+            rnn_cell = model.layers[2 + i].cell
+            x = Reshape((1, x.shape[2].value))(x)
+            c = Reshape((1, c.shape[2].value))(c)
+            x, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[c])
 
     x = dense_layer(x)
     x = activation_layer(x)
@@ -199,7 +217,7 @@ def generate(options):
 
     _, seq_length, char_length = model.input.shape
 
-    prediction_model = create_prediction_model(model, options.rnnType)
+    prediction_model = create_prediction_model(model, options.rnnType, options.rnnLayers)
     alphabet = load_alphabet(options.alphabetPath)
 
     if options.rnnType == 'LSTM':

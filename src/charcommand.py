@@ -5,14 +5,15 @@ import time
 DEFAULT_EPOCHS=10
 DEFAULT_ITERATIONS=5
 DEFAULT_LEARNING_RATE=0.0001
+DEFAULT_RNN_LAYERS=1
 DEFAULT_RNN_TYPE='LSTM'
 GRU_HIDDEN_UNITS = 128
 DEFAULT_BATCH_SIZE = 7000
 DEFAULT_MINIBATCH_SIZE = 128
 MAX_LENGTH = 750
 SAVE_PATH = './results/'
-MODEL_FILE = SAVE_PATH + 'charmodelgru.h5'
-STATS_FILE = SAVE_PATH + 'charmodelgru.csv'
+MODEL_FILE = SAVE_PATH + 'charmodelgrudeep.h5'
+STATS_FILE = SAVE_PATH + 'charmodelgrudeep.csv'
 ALPHABET_FILE = SAVE_PATH + 'alphabet.json'
 
 def generateDescription():
@@ -52,10 +53,12 @@ def defineParser():
                         help='Maximum batch size [TRAIN].')
     parser.add_argument('--minibatchSize', dest='minibatchSize', type=int, default=DEFAULT_MINIBATCH_SIZE,
                         help='Maximum minibatch size [TRAIN].')
+    parser.add_argument('--rnnLayers', dest='rnnLayers', type=int, default=DEFAULT_RNN_LAYERS,
+                        help='Number of RNN Layers of the model.')
     parser.add_argument('--learningRate', dest='learningRate', type=float, default=DEFAULT_LEARNING_RATE,
                         help='Learning rate [TRAIN].')
     parser.add_argument('--rnnType', dest='rnnType', type=str, default=DEFAULT_RNN_TYPE,
-                        help='Default type of RNN Cell: LSTM or GRU [TRAIN].')
+                        help='Default type of RNN Cell: LSTM or GRU.')
     parser.add_argument('--hidden', dest='hidden', type=int, default=GRU_HIDDEN_UNITS,
                         help='Number of hidden units per RNN layer')
     parser.add_argument('--epochs', dest='epochs', type=int, default=DEFAULT_EPOCHS,
