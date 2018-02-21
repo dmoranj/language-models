@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-
+library(knitr)
 characterDataPath <- './results/charmodelgrudeep.csv'
 
 ```
@@ -30,15 +30,17 @@ top10 <- characterData %>%
   arrange(desc(accuracy), desc(loss)) %>%
   head(10)
 
-top10
+top10 %>%
+  kable()
 ```
 
 ```{r, echo=FALSE}
-topIndex <- max(top10$index)
-disappointment <- -sum(top10$index - topIndex:(topIndex - 9))/topIndex
+topIndex <- max(characterData$index)
+disappointment <- sum(topIndex:(topIndex - 9)/top10$index)/10
 
 characterData %>%
-  summarize(maxAcc = max(accuracy),minAcc=min(accuracy), maxLoss = max(loss), minLoss=min(loss), epochs=max(index), disappointment=disappointment)
+  summarize(maxAcc = max(accuracy),minAcc=min(accuracy), maxLoss = max(loss), minLoss=min(loss), epochs=max(index), disappointment=disappointment) %>%
+  kable()
 ```
 
 

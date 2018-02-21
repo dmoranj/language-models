@@ -171,41 +171,58 @@ def create_prediction_model(model, rnn_type, layers):
 
     c0 = Input((1, rnn_cell.units), name='c0')
 
+    inputs = [input_char]
+    outputs = []
+
     if rnn_type == 'LSTM':
         a0 = Input((1, rnn_cell.units), name='a0')
         x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[a0, c0])
+        inputs.append(c0)
+        outputs.append(a)
+        outputs.append(c)
 
         for i in range(layers - 1):
             rnn_cell = model.layers[2 + i].cell
             x = Reshape((1, x.shape[2].value))(x)
-            a = Reshape((1, a.shape[2].value))(a)
-            c = Reshape((1, c.shape[2].value))(c)
-            x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[a, c])
+            a0 = Input((1, rnn_cell.units), name='a' + str(i + 1))
+            c0 = Input((1, rnn_cell.units), name='c' + str(i + 1))
+            inputs.append(a0)
+            inputs.append(c0)
+            x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[a0, c0])
+            outputs.append(a)
+            outputs.append(c)
 
     else:
         x, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[c0])
+        inputs.append(c0)
+        outputs.append(c)
 
         for i in range(layers - 1):
             rnn_cell = model.layers[2 + i].cell
             x = Reshape((1, x.shape[2].value))(x)
-            c = Reshape((1, c.shape[2].value))(c)
-            x, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[c])
+            c0 = Input((1, rnn_cell.units), name='c' + str(i + 1))
+            inputs.append(c0)
+            x, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[c0])
+            outputs.append(c)
 
     x = dense_layer(x)
     x = activation_layer(x)
 
-    if rnn_type == 'LSTM':
-        new_model = Model(inputs=[input_char, a0, c0], outputs=[x, a, c])
-    else:
-        new_model = Model(inputs=[input_char, c0], outputs=[x, c])
+    outputs.append(x)
+
+    new_model = Model(inputs=inputs, outputs=outputs)
 
     return new_model
 
 
-def decode(x, alphabet):
+def decode(x, alphabet, option):
     p = x.tolist()[0]
-    index = np.random.choice(range(len(p)), p=p/np.sum(p))
-    index = np.argmax(p)
+
+    if option == 'choice':
+        index = np.random.choice(range(len(p)), p=p/np.sum(p))
+    else:
+        index = np.argmax(p)
+
     return index, alphabet['i2c'][index]
 
 
@@ -223,39 +240,46 @@ def generate(options):
     prediction_model = create_prediction_model(model, options.rnnType, options.rnnLayers)
     alphabet = load_alphabet(options.alphabetPath)
 
-    if options.rnnType == 'LSTM':
-        a0 = np.zeros((1, options.hidden))
+    initial_states = []
 
-    c0 = np.zeros((1, options.hidden))
+    for i in range(options.rnnLayers):
+        if options.rnnType == 'LSTM':
+            a0 = np.zeros((1, options.hidden))
+            initial_states.append(a0)
+
+        c0 = np.zeros((1, options.hidden))
+        initial_states.append(c0)
+
     x0 = np.zeros((1, char_length))
 
     output = []
     maximums = []
+    sentence = []
 
     for j in range(10):
-        sentence = []
+        hidden_state = initial_states
 
-        if options.rnnType == 'LSTM':
-            a = a0
-
-        c = c0
         x = x0
 
         for i in range(options.maxLength):
-            c = np.reshape(c, (1, 1, options.hidden))
+            for index, p in enumerate(hidden_state):
+                hidden_state[index] = np.reshape(p, (1, 1, options.hidden))
+
             x = np.reshape(x, (1, 1, char_length))
 
-            if options.rnnType == 'LSTM':
-                a = np.reshape(a, (1, 1, options.hidden))
-                x, a, c = prediction_model.predict([x, a, c])
-            else:
-                x, c = prediction_model.predict([x, c])
+            inputs = [x] + initial_states
+            outputs = prediction_model.predict(inputs)
 
-            index, out = decode(x, alphabet)
+            x = outputs[-1]
+            hidden_state = outputs[:-1]
+
+            index, out = decode(x, alphabet, options.decodeOption)
+
             sentence.append(out)
 
             if out == '.':
                 output.append(''.join(sentence))
+                sentence = []
                 break
 
             maximums.append(np.max(x))

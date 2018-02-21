@@ -4,6 +4,7 @@ import time
 
 DEFAULT_EPOCHS=10
 DEFAULT_ITERATIONS=5
+DEFAULT_DECODE_OPTION='choice'
 DEFAULT_LEARNING_RATE=0.0001
 DEFAULT_RNN_LAYERS=1
 DEFAULT_RNN_TYPE='LSTM'
@@ -61,6 +62,8 @@ def defineParser():
                         help='Default type of RNN Cell: LSTM or GRU.')
     parser.add_argument('--hidden', dest='hidden', type=int, default=GRU_HIDDEN_UNITS,
                         help='Number of hidden units per RNN layer')
+    parser.add_argument('--decodeOption', dest='decodeOption', type=str, default=DEFAULT_DECODE_OPTION,
+                        help='Indicates which method to use for character decoding giving the posterior [GENERATE]')
     parser.add_argument('--epochs', dest='epochs', type=int, default=DEFAULT_EPOCHS,
                         help='Number of epochs to train the model for [TRAIN].')
     parser.add_argument('--iterations', dest='iterations', type=int, default=DEFAULT_ITERATIONS,
