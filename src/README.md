@@ -13,7 +13,7 @@ Models will be presented as a set of command line tools for training and evaluat
 
 This tool aims to train a set of models to learn a distribution from a corpus of text 
 at a character level. In order to accomplish this task, the text is split into lines,
-each lines representing an example for the algorithm. Each example line is codified with
+each line representing an example for the algorithm. Each example line is codified with
 the following two actions:
 
 * Each character is one-hot encoded with the default alphabet. This alphabet contains
@@ -35,12 +35,13 @@ of the following components:
 * A sequence of connected RNN layers (either LSTM or GRU). 
 * A sequence of time-distributed Dense layers (i.e: the layers share weights for all
 sequence steps).
-* A time-distrbuted Softmax activation layer that outputs a one-hot encoded character.
+* A time-distributed Softmax activation layer that outputs a one-hot encoded character.
 
 Each example input to the model is a single line, displaced one character to the left, 
-the example label being the original line. The model is, thus, a sequence-to-sequence model.
+the example label being the original line. The model is, thus, a sequence-to-sequence model,
+encouraged to generate the original text character by character when presented with a blank.
 This makes the model unsupervised in a certain sense, although it is trained with backprop 
-anyway. The training algorithm is Adam, with configurable learning rate.
+anyway. The optimization algorithm is Adam, with configurable learning rate.
 
 
 Generation process

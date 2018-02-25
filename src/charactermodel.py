@@ -39,7 +39,7 @@ def create_model(input_shape, hidden_units, unit_type, learning_rate, layers):
 
 
 def fit_model(model, inputs, Y, batch_size, epochs):
-    history = model.fit(inputs, Y, batch_size=batch_size, epochs=epochs, verbose=2)
+    history = model.fit(inputs, Y, batch_size=batch_size, epochs=epochs, verbose=1)
     return history
 
 
@@ -60,7 +60,7 @@ def onehot_line(line, alphabet, options):
         if i >= options.maxLength:
             break
 
-        if not c in alphabet['c2i'].keys():
+        if c not in alphabet['c2i'].keys():
             c = '#'
 
         index = alphabet['c2i'][c]
@@ -231,6 +231,53 @@ def one_hot_char(index, alphabet):
     ohc[0, index] = 1
     return ohc
 
+def parse_outputs(outputs, alphabet, options):
+    new_outputs = {}
+
+    x = outputs[-1]
+    index, out = decode(x, alphabet, options.decodeOption)
+    new_outputs['X'] = one_hot_char(index, alphabet)
+
+    hidden_state = outputs[:-1]
+
+    if options.rnnType == 'LSTM':
+        for key, val in enumerate(hidden_state):
+            if key % 2 == 0:
+                name = 'a' + str(key//2)
+            else:
+                name = 'c' + str(key//2)
+
+            new_outputs[name] = val
+    else:
+        for key, val in enumerate(hidden_state):
+            new_outputs['c' + str(key)] = val
+
+    return new_outputs, out, x
+
+
+def reshape_current_state(char_length, inputs, options):
+    for key in inputs.keys():
+        if key.startswith('a') or key.startswith('c'):
+            inputs[key] = np.reshape(inputs[key], (1, 1, options.hidden))
+
+    inputs['X'] = np.reshape(inputs['X'], (1, 1, char_length))
+    return inputs
+
+
+def create_initial_states(options, char_length):
+    initial_states = {}
+    for i in range(options.rnnLayers):
+        if options.rnnType == 'LSTM':
+            a0 = np.zeros((1, options.hidden))
+            initial_states['a' + str(i)] = a0
+
+        c0 = np.zeros((1, options.hidden))
+        initial_states['c' + str(i)] = c0
+
+    initial_states['X'] = np.zeros((1, char_length))
+
+    return initial_states
+
 
 def generate(options):
     model = load_model(options.modelPath)
@@ -240,40 +287,20 @@ def generate(options):
     prediction_model = create_prediction_model(model, options.rnnType, options.rnnLayers)
     alphabet = load_alphabet(options.alphabetPath)
 
-    initial_states = []
-
-    for i in range(options.rnnLayers):
-        if options.rnnType == 'LSTM':
-            a0 = np.zeros((1, options.hidden))
-            initial_states.append(a0)
-
-        c0 = np.zeros((1, options.hidden))
-        initial_states.append(c0)
-
-    x0 = np.zeros((1, char_length))
+    initial_states = create_initial_states(options, char_length)
 
     output = []
     maximums = []
+    minimums = []
     sentence = []
 
     for j in range(10):
-        hidden_state = initial_states
-
-        x = x0
+        inputs = initial_states.copy()
 
         for i in range(options.maxLength):
-            for index, p in enumerate(hidden_state):
-                hidden_state[index] = np.reshape(p, (1, 1, options.hidden))
-
-            x = np.reshape(x, (1, 1, char_length))
-
-            inputs = [x] + initial_states
+            inputs = reshape_current_state(char_length, inputs, options)
             outputs = prediction_model.predict(inputs)
-
-            x = outputs[-1]
-            hidden_state = outputs[:-1]
-
-            index, out = decode(x, alphabet, options.decodeOption)
+            inputs, out, x = parse_outputs(outputs, alphabet, options)
 
             sentence.append(out)
 
@@ -283,16 +310,31 @@ def generate(options):
                 break
 
             maximums.append(np.max(x))
-
-            x = one_hot_char(index, alphabet)
+            minimums.append(np.min(x))
 
         if len(sentence) > 0:
             output.append(''.join(sentence) + '.')
 
+    final_output = '\n'.join(output)
+
+    return alphabet, final_output, maximums, minimums
+
+
+def generation(options):
+    alphabet, final_output, maximums, minimums = generate(options)
+    display_result(alphabet, final_output, maximums, minimums)
+
+
+def display_result(alphabet, final_output, maximums, minimums):
     print('Your author says:\n\n')
-    print('\n'.join(output))
-    print('\nMaximum probability= {}'.format(max(maximums)))
-    print('Alphabet length= {}'.format(alphabet['length']))
-    print('Non-weigthed base probability= {}'.format(1/alphabet['length']))
+    print(final_output)
+
+    global_max = max(maximums)
+    global_min = min(minimums)
+    print('\nMaximum probability= {}'.format(global_max))
+    print('\nMinimum probability= {}'.format(global_min))
+    print('\nProbability interval size: {}'.format(global_max - global_min))
+    print('\nAlphabet length= {}'.format(alphabet['length']))
+    print('\nNon-weigthed base probability= {}'.format(1 / alphabet['length']))
 
 

@@ -84,7 +84,7 @@ def start():
     elif args.command == 'evaluate':
         print('Evaluating')
     elif args.command == 'generate':
-        cmodel.generate(args)
+        cmodel.generation(args)
     else:
         print('Unknown command.')
 

@@ -58,7 +58,7 @@ characterData %>%
   mutate(means = ifelse(metric == 'accuracy', meanAcc, meanLoss)) %>%
   ggplot(aes(x=index, y=value)) +
     facet_grid(metric ~ .) +
-    geom_smooth() +
+    geom_smooth(method='loess') +
     geom_line(aes(y=means), color='red', linetype='dashed') +
     geom_text(aes(x=min(index), y=means + 0.01, label=round(means, 3)), angle=0, hjust="left", size=4.2, fontface="plain")
 ```
