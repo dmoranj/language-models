@@ -289,6 +289,7 @@ def generate(options):
 
     initial_states = create_initial_states(options, char_length)
 
+    global_sum = initial_states['X']
     output = []
     maximums = []
     minimums = []
@@ -311,30 +312,48 @@ def generate(options):
 
             maximums.append(np.max(x))
             minimums.append(np.min(x))
+            global_sum += x
 
         if len(sentence) > 0:
             output.append(''.join(sentence) + '.')
 
     final_output = '\n'.join(output)
 
-    return alphabet, final_output, maximums, minimums
+    stats = {
+        'maximum': maximums,
+        'minimum': minimums,
+        'globalSum': global_sum
+    }
+
+    return alphabet, final_output, stats
 
 
 def generation(options):
-    alphabet, final_output, maximums, minimums = generate(options)
-    display_result(alphabet, final_output, maximums, minimums)
+    alphabet, final_output, stats = generate(options)
+    display_result(alphabet, final_output, stats)
 
 
-def display_result(alphabet, final_output, maximums, minimums):
+def display_result(alphabet, final_output, stats):
     print('Your author says:\n\n')
     print(final_output)
 
+    maximums = stats['maximum']
+    minimums = stats['minimum']
+
     global_max = max(maximums)
     global_min = min(minimums)
+
+    total_weight = np.sum(stats['globalSum'])
+
+    prob_df = pd.DataFrame({'char': alphabet['i2c'], 'p': stats['globalSum'][0]/total_weight})
+    prob_df = prob_df.sort_values(by='p', ascending=False)
+
     print('\nMaximum probability= {}'.format(global_max))
     print('\nMinimum probability= {}'.format(global_min))
     print('\nProbability interval size: {}'.format(global_max - global_min))
     print('\nAlphabet length= {}'.format(alphabet['length']))
     print('\nNon-weigthed base probability= {}'.format(1 / alphabet['length']))
+    print(prob_df)
+
 
 
