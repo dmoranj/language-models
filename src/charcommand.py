@@ -13,8 +13,8 @@ DEFAULT_BATCH_SIZE = 7000
 DEFAULT_MINIBATCH_SIZE = 128
 MAX_LENGTH = 750
 SAVE_PATH = './results/'
-MODEL_FILE = SAVE_PATH + 'charmodelgrudeep.h5'
-STATS_FILE = SAVE_PATH + 'charmodelgrudeep.csv'
+MODEL_FILE = SAVE_PATH + 'charmodelwideanddeep.h5'
+STATS_FILE = SAVE_PATH + 'charmodelwideanddeep.csv'
 ALPHABET_FILE = SAVE_PATH + 'alphabet.json'
 
 def generateDescription():

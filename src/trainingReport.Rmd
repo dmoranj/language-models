@@ -10,7 +10,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(knitr)
-characterDataPath <- './results/charmodelgrudeep.csv'
+characterDataPath <- './results/charmodelwideanddeep.csv'
 
 ```
 
@@ -51,14 +51,24 @@ characterData %>%
 ```{r echo=FALSE, fig.width=10, fig.height = 8}
 meanAcc <- mean(characterData$accuracy)
 meanLoss <- mean(characterData$loss)
-  
+maxIndex <- max(characterData$index)
+meanGlobal <- 2*meanAcc - meanLoss
+
 characterData %>%
   select(index, accuracy, loss) %>%
+  filter(index > maxIndex - 750) %>%
+  mutate(global = 2*accuracy - loss) %>%
   gather('metric', 'value', -index) %>%
-  mutate(means = ifelse(metric == 'accuracy', meanAcc, meanLoss)) %>%
-  ggplot(aes(x=index, y=value)) +
-    facet_grid(metric ~ .) +
+  ggplot(aes(x=index, y=value, color=metric)) +
     geom_smooth(method='loess') +
-    geom_line(aes(y=means), color='red', linetype='dashed') +
-    geom_text(aes(x=min(index), y=means + 0.01, label=round(means, 3)), angle=0, hjust="left", size=4.2, fontface="plain")
+    geom_line(alpha=0.3) +
+    geom_line(aes(y=meanAcc), color='red', linetype='dashed') +
+    geom_line(aes(y=meanLoss), color='blue', linetype='dashed') +
+    geom_line(aes(y=meanGlobal), color='green', linetype='dashed') +
+    geom_text(aes(x=min(index), y=meanAcc + 0.01, label=round(meanAcc, 3)), angle=0, hjust="left", size=4.2, fontface="plain", color="grey") +
+    geom_text(aes(x=min(index), y=meanLoss + 0.01, label=round(meanLoss, 3)), angle=0, hjust="left", size=4.2, fontface="plain", color="grey") +
+    geom_text(aes(x=min(index), y=meanGlobal + 0.02, label=round(meanGlobal, 3)), angle=0, hjust="left", size=4.2, fontface="plain", color="grey")
 ```
+
+
+

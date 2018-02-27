@@ -10,7 +10,7 @@ import json
 
 ALPHABET_CHARS = "abcdefghijklmnopqrstuvwxyz?!0123456789;:,.()-_'\""
 
-def create_model(input_shape, hidden_units, unit_type, learning_rate, layers):
+def create_model(input_shape, hidden_units, unit_type, opt, layers):
     print("* Creating new model")
 
     _, max_length, char_length = input_shape
@@ -32,7 +32,6 @@ def create_model(input_shape, hidden_units, unit_type, learning_rate, layers):
     x = TimeDistributed(Activation('softmax'))(x)
 
     model = Model(inputs=[char_input], outputs=[x])
-    opt = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, decay=0.01)
     model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=["accuracy"])
 
     return model
@@ -134,13 +133,16 @@ def save_model(model, history, options):
 
 
 def train_model(options):
+    opt = Adam(lr=options.learningRate, beta_1=0.9, beta_2=0.999, decay=0.01)
+
     if options.load:
         alphabet = load_alphabet(options.alphabetPath)
         model = load_model(options.modelPath)
+        model.optimizer = opt
     else:
         alphabet = create_alphabet()
         model = create_model((options.batchSize, options.maxLength, alphabet['length']), options.hidden,
-                             options.rnnType, options.learningRate, options.rnnLayers)
+                             options.rnnType, opt, options.rnnLayers)
         model.summary()
 
     save_alphabet(options.alphabetPath, alphabet)
