@@ -1,5 +1,6 @@
 import argparse
 import charactermodel as cmodel
+import characterpredict as cpredict
 import time
 
 DEFAULT_EPOCHS=10
@@ -84,7 +85,7 @@ def start():
     elif args.command == 'evaluate':
         print('Evaluating')
     elif args.command == 'generate':
-        cmodel.generation(args)
+        cpredict.generation(args)
     else:
         print('Unknown command.')
 

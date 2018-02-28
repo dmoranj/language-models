@@ -36,7 +36,7 @@ top10 %>%
 
 ```{r, echo=FALSE}
 topIndex <- max(characterData$index)
-disappointment <- sum(topIndex:(topIndex - 9)/top10$index)/10
+disappointment <- sum(topIndex:(topIndex - 9)/top10$index)/10 -1
 
 characterData %>%
   summarize(maxAcc = max(accuracy),minAcc=min(accuracy), maxLoss = max(loss), minLoss=min(loss), epochs=max(index), disappointment=disappointment) %>%
@@ -48,7 +48,7 @@ characterData %>%
 
 ## Training plots
 
-```{r echo=FALSE, fig.width=10, fig.height = 8}
+```{r echo=FALSE, fig.width=12, fig.height = 8}
 meanAcc <- mean(characterData$accuracy)
 meanLoss <- mean(characterData$loss)
 maxIndex <- max(characterData$index)
@@ -56,7 +56,7 @@ meanGlobal <- 2*meanAcc - meanLoss
 
 characterData %>%
   select(index, accuracy, loss) %>%
-  filter(index > maxIndex - 750) %>%
+  filter(index > maxIndex - 1250) %>%
   mutate(global = 2*accuracy - loss) %>%
   gather('metric', 'value', -index) %>%
   ggplot(aes(x=index, y=value, color=metric)) +
