@@ -136,7 +136,7 @@ def save_model(model, history, options):
     df.to_csv(options.statsPath, mode='a', header=False)
 
 def dataset_generator(alphabet, options):
-    for i in range(options.iterations):
+    while True:
         for lines in td.generate_line_batch(options.datasetPath, options.minibatchSize):
             train = generate_datasets(lines, alphabet, options)
             yield (train['X'], train['Y'])
@@ -156,8 +156,11 @@ def train_model(options):
         model.summary()
 
     save_alphabet(options.alphabetPath, alphabet)
-    history = model.fit_generator(dataset_generator(alphabet, options), steps_per_epoch=options.batchSize,
-                                  epochs=options.epochs, verbose=1)
-    save_model(model, history, options)
+    data_source = dataset_generator(alphabet, options)
+
+    for i in range(options.iterations):
+        history = model.fit_generator(data_source, steps_per_epoch=options.batchSize,
+                                      epochs=options.epochs, verbose=1)
+        save_model(model, history, options)
 
 
