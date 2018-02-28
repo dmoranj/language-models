@@ -9,6 +9,13 @@ import json
 
 ALPHABET_CHARS = "abcdefghijklmnopqrstuvwxyz?!0123456789;:,.()-_'\""
 
+def load_alphabet(path):
+    with open(path, 'r') as f:
+        text = f.read()
+        alphabet = json.loads(text)
+
+        return alphabet
+
 def create_model(input_shape, hidden_units, unit_type, opt, layers):
     print("* Creating new model")
 
@@ -37,7 +44,6 @@ def create_model(input_shape, hidden_units, unit_type, opt, layers):
 
 
 def fit_model(model, inputs, Y, batch_size, epochs):
-    history = model.fit(inputs, Y, batch_size=batch_size, epochs=epochs, verbose=1)
     return history
 
 
@@ -103,7 +109,6 @@ def initialize_dataset(lines):
 
 
 def generate_datasets(lines, alphabet, options):
-    print('* Generating datasets')
     prepaired_lines = prepaire_lines(lines)
     lines_oh = convert_to_onehot(prepaired_lines, alphabet, options)
     final_lines = initialize_dataset(lines_oh)
@@ -130,6 +135,12 @@ def save_model(model, history, options):
 
     df.to_csv(options.statsPath, mode='a', header=False)
 
+def dataset_generator(alphabet, options):
+    for i in range(options.iterations):
+        for lines in td.generate_line_batch(options.datasetPath, options.minibatchSize):
+            train = generate_datasets(lines, alphabet, options)
+            yield (train['X'], train['Y'])
+
 
 def train_model(options):
     opt = Adam(lr=options.learningRate, beta_1=0.9, beta_2=0.999, decay=0.01)
@@ -145,11 +156,8 @@ def train_model(options):
         model.summary()
 
     save_alphabet(options.alphabetPath, alphabet)
-
-    for i in range(options.iterations):
-        for lines in td.generate_line_batch(options.datasetPath, options.batchSize):
-            train = generate_datasets(lines, alphabet, options)
-            history = fit_model(model, {"X": train['X']}, train['Y'], options.minibatchSize, options.epochs)
-            save_model(model, history, options)
+    history = model.fit_generator(dataset_generator(alphabet, options), steps_per_epoch=options.batchSize,
+                                  epochs=options.epochs, verbose=1)
+    save_model(model, history, options)
 
 

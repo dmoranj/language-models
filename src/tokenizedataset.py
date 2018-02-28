@@ -67,7 +67,7 @@ def generate_line_batch(input_folder, max_lines):
     current_batch = []
 
     for file in files:
-        print('Loading text from: ' + file)
+        print('\n\n* Loading text from: {}\n\n'.format(file))
 
         textpath = os.path.join(input_folder, file)
         tokens = []

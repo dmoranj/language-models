@@ -1,14 +1,8 @@
 from keras.layers import *
 from keras.models import Model, load_model
+from charactermodel import load_alphabet
 import pandas as pd
 import json
-
-def load_alphabet(path):
-    with open(path, 'r') as f:
-        text = f.read()
-        alphabet = json.loads(text)
-
-        return alphabet
 
 
 def create_prediction_model(model, rnn_type, layers):
