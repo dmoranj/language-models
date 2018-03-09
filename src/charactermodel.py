@@ -7,7 +7,7 @@ import tokenizedataset as td
 from constants import *
 import json
 
-ALPHABET_CHARS = "abcdefghijklmnopqrstuvwxyz?!0123456789;:,.()-_'\""
+ALPHABET_CHARS = "abcdefghijklmnopqrstuvwxyz?!0123456789;:,.()-'\""
 
 def load_alphabet(path):
     with open(path, 'r') as f:
@@ -26,12 +26,12 @@ def create_model(input_shape, hidden_units, unit_type, opt, layers):
     if unit_type == "LSTM":
         a = LSTM(hidden_units, return_sequences=True)(char_input)
 
-        for i in range(layers -1):
+        for i in range(layers - 1):
             a = LSTM(hidden_units, return_sequences=True)(a)
     else:
         a = GRU(hidden_units, return_sequences=True)(char_input)
 
-        for i in range(layers -1):
+        for i in range(layers - 1):
             a = GRU(hidden_units, return_sequences=True)(a)
 
     x = TimeDistributed(Dense(char_length))(a)
@@ -41,10 +41,6 @@ def create_model(input_shape, hidden_units, unit_type, opt, layers):
     model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=["accuracy"])
 
     return model
-
-
-def fit_model(model, inputs, Y, batch_size, epochs):
-    return history
 
 
 def prepaire_lines(lines):

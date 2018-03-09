@@ -10,7 +10,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(knitr)
-characterDataPath <- './results/charmodelwideanddeep.csv'
+characterDataPath <- './results/lstmbig.csv'
 
 ```
 
@@ -56,11 +56,11 @@ meanGlobal <- 2*meanAcc - meanLoss
 
 characterData %>%
   select(index, accuracy, loss) %>%
-  filter(index > maxIndex - 2000) %>%
+  filter(index > maxIndex - 1000) %>%
   mutate(global = 2*accuracy - loss) %>%
   gather('metric', 'value', -index) %>%
   ggplot(aes(x=index, y=value, color=metric)) +
-    geom_smooth(method='loess', span=0.15) +
+    geom_smooth(method='loess', span=0.25) +
     geom_line(alpha=0.3) +
     geom_line(aes(y=meanAcc), color='red', linetype='dashed') +
     geom_line(aes(y=meanLoss), color='blue', linetype='dashed') +

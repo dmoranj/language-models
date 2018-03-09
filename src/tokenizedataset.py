@@ -32,6 +32,7 @@ def split_sentences(fulltext):
 def tokenize(text):
     text = clean_text(text)
     tokens = [token for token in split_sentences(text) if len(token) > MIN_TOKEN_LENGTH]
+    np.random.shuffle(tokens)
     word_list = [[word.lower() for word in line] for line in tokens]
 
     return word_list
