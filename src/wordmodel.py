@@ -34,7 +34,9 @@ def create_model(input_shape, hidden_units, unit_type, opt, layers, vocab_size, 
     x = TimeDistributed(Dense(128), name='Dense1')(a)
     x = TimeDistributed(Dense(1), name='OutputLayer')(x)
 
-    model = Model(inputs=[char_input], outputs=[x])
+    output = Reshape((input_shape[1],))(x)
+
+    model = Model(inputs=[char_input], outputs=[output])
     model.compile(loss='mean_squared_error', optimizer=opt, metrics=["accuracy"])
 
     return model
@@ -64,9 +66,6 @@ def create_dataset_generator(inputs, batch_size):
         lines = inputs[np.random.randint(0, len(inputs), batch_size)]
         displaced = np.zeros(lines.shape, dtype=np.int32)
         displaced[:, 1:] = lines[:, :-1]
-
-        new_shape = (lines.shape[0], lines.shape[1], 1)
-        lines = np.reshape(lines, new_shape)
 
         yield displaced, lines
 

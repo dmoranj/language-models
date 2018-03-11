@@ -10,7 +10,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(knitr)
-characterDataPath <- './results/lstmbig.csv'
+characterDataPath <- './results/wordLstm2.csv'
 
 ```
 
@@ -52,12 +52,12 @@ characterData %>%
 meanAcc <- mean(characterData$accuracy)
 meanLoss <- mean(characterData$loss)
 maxIndex <- max(characterData$index)
-meanGlobal <- 2*meanAcc - meanLoss
+meanGlobal <- 5e5*meanAcc - meanLoss
 
 characterData %>%
   select(index, accuracy, loss) %>%
   filter(index > maxIndex - 1000) %>%
-  mutate(global = 2*accuracy - loss) %>%
+  mutate(global = 5e5*accuracy - loss) %>%
   gather('metric', 'value', -index) %>%
   ggplot(aes(x=index, y=value, color=metric)) +
     geom_smooth(method='loess', span=0.25) +
@@ -71,4 +71,11 @@ characterData %>%
 ```
 
 
-
+```{r echo = FALSE}
+characterData %>%
+  select(index, accuracy, loss) %>%
+  filter(index > maxIndex - 1000) %>%
+  ggplot(aes(x=index, y=accuracy)) +
+    geom_smooth(method='loess', span=0.25) +
+    geom_line(alpha=0.3)
+```
