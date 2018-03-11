@@ -20,6 +20,7 @@ SAVE_PATH = './results/'
 MODEL_FILE = SAVE_PATH + 'charmodelwideanddeep.h5'
 STATS_FILE = SAVE_PATH + 'charmodelwideanddeep.csv'
 ALPHABET_FILE = SAVE_PATH + 'alphabet.json'
+VOCABULARY_FILE= SAVE_PATH + 'vocabulary.json'
 
 def generateDescription():
     return """
@@ -53,6 +54,8 @@ def defineParser():
                         help='Path to save the model statistics [TRAIN]')
     parser.add_argument('--alphabetPath', dest='alphabetPath', type=str, default=ALPHABET_FILE,
                         help='Path to save the alphabet (for training) or load it (in generation and evaluation)')
+    parser.add_argument('--vocabularyPath', dest='vocabularyPath', type=str, default=VOCABULARY_FILE,
+                        help='Path to save and load the vocabulary (just for word models).')
     parser.add_argument('--maxLength', dest='maxLength', type=int, default=MAX_LENGTH,
                         help='Maximum line length (greater lines will be trimmed to this length).')
     parser.add_argument('--batchSize', dest='batchSize', type=int, default=DEFAULT_BATCH_SIZE,

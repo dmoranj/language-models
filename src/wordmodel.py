@@ -9,6 +9,7 @@ from functools import *
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from constants import *
+import json
 
 MAX_WORDS=128
 
@@ -70,8 +71,9 @@ def create_dataset_generator(inputs, batch_size):
         yield displaced, lines
 
 
-def saveTokenizer(tokenizer):
-    print('Saving tokenizer')
+def saveTokenizer(path, tokenizer):
+    with open(path, 'w') as f:
+        json.dump(tokenizer.word_index, f)
 
 
 def train_model(options):
@@ -79,6 +81,7 @@ def train_model(options):
     vocab_length = len(tokenizer.word_counts)
     input_shape = (options.minibatchSize, max_words)
     opt = Adam(lr=options.learningRate, beta_1=0.9, beta_2=0.999, decay=0.01)
+    saveTokenizer(options.vocabularyPath, tokenizer)
 
     if options.load:
         model = load_model(options.modelPath)
@@ -87,7 +90,7 @@ def train_model(options):
         model = create_model(input_shape, options.hidden, options.rnnType, opt, options.rnnLayers,
                              vocab_length, options.embedding)
         model.summary()
-        saveTokenizer(tokenizer)
+
 
     data_source = create_dataset_generator(inputs, options.minibatchSize)
 
