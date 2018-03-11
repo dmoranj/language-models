@@ -1,7 +1,7 @@
 from keras.layers import *
 from keras.models import Model, load_model
 from keras.optimizers import Adam
-import pandas as pd
+from modelutils import save_model
 import numpy as np
 import tokenizedataset as td
 from constants import *
@@ -116,20 +116,6 @@ def save_alphabet(path, alphabet):
     with open(path, 'w') as f:
         json.dump(alphabet, f)
 
-
-def save_model(model, history, options):
-    model.save(options.modelPath)
-
-    epochs = {
-        'accuracy': history.history['acc'],
-        'loss': history.history['loss']
-    }
-
-    df = pd.DataFrame(epochs)
-    df['rate'] = options.learningRate
-    df['minibatch'] = options.minibatchSize
-
-    df.to_csv(options.statsPath, mode='a', header=False)
 
 def dataset_generator(alphabet, options):
     while True:

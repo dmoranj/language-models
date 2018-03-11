@@ -1,6 +1,8 @@
 import argparse
 import charactermodel as cmodel
 import characterpredict as cpredict
+import wordmodel as wmodel
+import wordpredict as wpredict
 import time
 
 DEFAULT_EPOCHS=10
@@ -9,6 +11,7 @@ DEFAULT_DECODE_OPTION='choice'
 DEFAULT_LEARNING_RATE=0.0001
 DEFAULT_RNN_LAYERS=1
 DEFAULT_RNN_TYPE='LSTM'
+DEFAULT_EMBEDDING=512
 GRU_HIDDEN_UNITS = 128
 DEFAULT_BATCH_SIZE = 7000
 DEFAULT_MINIBATCH_SIZE = 128
@@ -41,6 +44,7 @@ def generateDescription():
 def defineParser():
     parser = argparse.ArgumentParser(description=generateDescription())
     parser.add_argument('command', type=str, help='Command to execute: train, evaluate or generate')
+    parser.add_argument('model', type=str, help='Kind of model to train or execute: character or word')
     parser.add_argument('--datasetPath', dest='datasetPath', type=str,
                         help='Path to the dataset folder')
     parser.add_argument('--modelPath', dest='modelPath', type=str, default=MODEL_FILE,
@@ -69,6 +73,8 @@ def defineParser():
                         help='Number of epochs to train the model for [TRAIN].')
     parser.add_argument('--iterations', dest='iterations', type=int, default=DEFAULT_ITERATIONS,
                         help='Number of iterations to train the model for [TRAIN].')
+    parser.add_argument('--embedding', dest='embedding', type=int, default=DEFAULT_EMBEDDING,
+                        help='Embedding dimension (for word models only) [TRAIN].')
     parser.add_argument('--load', dest='load', type=bool, default=False,
                         help='Flat to indicate whether to train a new model or load a new one [TRAIN]')
 
@@ -81,11 +87,17 @@ def start():
     start = time.time()
 
     if args.command == 'train':
-        cmodel.train_model(args)
+        if args.model == 'character':
+            cmodel.train_model(args)
+        else:
+            wmodel.train_model(args)
     elif args.command == 'evaluate':
         print('Evaluating')
     elif args.command == 'generate':
-        cpredict.generation(args)
+        if args.model == 'character':
+            cpredict.generation(args)
+        else:
+            wpredict.generation(args)
     else:
         print('Unknown command.')
 
