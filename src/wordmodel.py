@@ -68,6 +68,8 @@ def create_dataset_generator(inputs, batch_size):
         displaced = np.zeros(lines.shape, dtype=np.int32)
         displaced[:, 1:] = lines[:, :-1]
 
+        lines = lines /15000
+
         yield displaced, lines
 
 
