@@ -33,16 +33,20 @@ def reverse_vocabulary(vocabulary):
 
 
 def generate(model, sequenceSize):
-    print('generating')
-
     input = np.zeros((1, sequenceSize))
     output_words = []
 
+    stats = []
     for i in range(1, sequenceSize -1):
         output = model.predict(input)
         _, _, vocab_size = output.shape
-
         last_word = np.random.choice(range(1, vocab_size + 1), p=output[0, i - 1])
+        stat = {
+            'max': max(output[0, i-1]),
+            'min': min(output[0, i-1])
+        }
+
+        stats.append(stat)
 
         if last_word <= 0:
             break
@@ -50,7 +54,7 @@ def generate(model, sequenceSize):
         input[0, i] = last_word
         output_words.append(last_word)
 
-    return output_words
+    return output_words, stats
 
 
 def print_full_line():
@@ -58,7 +62,7 @@ def print_full_line():
     print(full_line)
 
 
-def display_result(vocabulary, final_output):
+def display_result(vocabulary, final_output, stats):
     reversed_vocabulary = reverse_vocabulary(vocabulary)
 
     words = [reversed_vocabulary[word_index] for word_index in final_output]
@@ -69,9 +73,14 @@ def display_result(vocabulary, final_output):
     print(text)
     print_full_line()
 
+    print('\n\nStats:\n\n')
+    print('Max interval: {}\n'.format(max([s['max'] - s['min'] for s in stats])))
+    print('Max p: {}\tMin p: {}'.format(max([s['max'] for s in stats]), min([s['min'] for s in stats])))
+
+
 def generation(options):
     print('Generating...')
     vocabulary = load_vocabulary(options.vocabularyPath)
     model, _, _, sequenceSize =load_model(options.modelPath)
-    final_output = generate(model, sequenceSize)
-    display_result(vocabulary, final_output)
+    final_output, stats = generate(model, sequenceSize)
+    display_result(vocabulary, final_output, stats)
