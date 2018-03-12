@@ -1,5 +1,6 @@
 from keras.layers import *
 import keras.models as km
+from wordmodel import loadTokenizer
 import json
 import re
 
@@ -22,11 +23,9 @@ def load_model(path):
 
 
 def load_vocabulary(path):
-    with open(path, 'r') as f:
-        text = f.read()
-        vocabulary = json.loads(text)
+    tokenizer = loadTokenizer(path)
 
-        return vocabulary
+    return tokenizer.word_index
 
 
 def reverse_vocabulary(vocabulary):
@@ -41,8 +40,9 @@ def generate(model, sequenceSize):
 
     for i in range(1, sequenceSize -1):
         output = model.predict(input)
+        _, _, vocab_size = output.shape
 
-        last_word = int(np.round(output[0, i - 1]*1500))
+        last_word = np.random.choice(range(1, vocab_size + 1), p=output[0, i - 1])
 
         if last_word <= 0:
             break

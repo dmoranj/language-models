@@ -10,7 +10,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(knitr)
-characterDataPath <- './results/wordLstm3.csv'
+characterDataPath <- './results/wordLstm4.csv'
 
 ```
 
