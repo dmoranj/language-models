@@ -40,7 +40,7 @@ def create_model(input_shape, hidden_units, unit_type, opt, layers, vocab_size, 
     output = x
 
     model = Model(inputs=[char_input], outputs=[output])
-    model.compile(loss='mean_squared_error', optimizer=opt, metrics=["accuracy"])
+    model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=["accuracy"])
 
     return model
 

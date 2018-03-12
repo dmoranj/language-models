@@ -4,6 +4,7 @@ from wordmodel import loadTokenizer
 import json
 import re
 
+MAX_SENTENCE_LENGTH = 30
 
 def extract_model_features(model):
     regex = re.compile(r"\.layers\.recurrent\.(.*)'", re.IGNORECASE)
@@ -37,7 +38,8 @@ def generate(model, sequenceSize):
     output_words = []
 
     stats = []
-    for i in range(1, sequenceSize -1):
+
+    for i in range(1, MAX_SENTENCE_LENGTH):
         output = model.predict(input)
         _, _, vocab_size = output.shape
         last_word = np.random.choice(range(1, vocab_size + 1), p=output[0, i - 1])
