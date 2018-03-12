@@ -47,10 +47,7 @@ def flatten(sequence):
     return reduce(lambda x, y: x + y, sequence)
 
 def read_dataset(path):
-    # read the texts
     datasets = td.load_folder(path)
-
-    # extract the vocabulary (Tokenizer)
     tokenizer = Tokenizer()
     lines = [reduce((lambda x, y: x + ' ' +y), word_seq) for word_seq in datasets]
     max_words = MAX_WORDS
