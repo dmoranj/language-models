@@ -15,7 +15,7 @@ import json
 
 MAX_WORDS=64
 
-def create_model(input_shape, hidden_units, unit_type, opt, layers, vocab_size, emb_dimension):
+def create_model(input_shape, hidden_units, dense_units, unit_type, opt, layers, vocab_size, emb_dimension):
     print("* Creating new model")
 
     m, max_length = input_shape
@@ -34,7 +34,7 @@ def create_model(input_shape, hidden_units, unit_type, opt, layers, vocab_size, 
         for i in range(layers - 1):
             a = GRU(hidden_units, return_sequences=True)(a)
 
-    x = TimeDistributed(Dense(128), name='Dense1')(a)
+    x = TimeDistributed(Dense(dense_units), name='Dense1')(a)
     x = TimeDistributed(Dense(vocab_size + 1, activation='softmax'), name='OutputLayer')(x)
 
     output = x
@@ -95,7 +95,7 @@ def loadTokenizer(path):
         return tokenizer
 
 def train_model(options):
-    opt = Adam(lr=options.learningRate, beta_1=0.9, beta_2=0.999, decay=0.01)
+    opt = Adam(lr=options.learningRate, beta_1=0.9, beta_2=0.999, decay=0.01, clipnorm=1.0)
 
     lines = load_lines(options.datasetPath)
 
@@ -113,7 +113,7 @@ def train_model(options):
         model.optimizer = opt
     else:
         input_shape = (options.minibatchSize, max_words)
-        model = create_model(input_shape, options.hidden, options.rnnType, opt, options.rnnLayers,
+        model = create_model(input_shape, options.hidden, options.dense, options.rnnType, opt, options.rnnLayers,
                              vocab_length, options.embedding)
 
         model.summary()

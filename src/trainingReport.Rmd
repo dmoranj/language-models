@@ -10,7 +10,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(knitr)
-characterDataPath <- './results/wordLstm6.csv'
+characterDataPath <- './results/charLstm1.csv'
 
 ```
 
@@ -52,7 +52,7 @@ characterData %>%
 meanAcc <- mean(characterData$accuracy)
 meanLoss <- mean(characterData$loss)
 maxIndex <- max(characterData$index)
-multiplier <- 1e2
+multiplier <- 0.5
 meanGlobal <- meanAcc - multiplier*meanLoss
 
 characterData %>%

@@ -13,6 +13,7 @@ DEFAULT_RNN_LAYERS=1
 DEFAULT_RNN_TYPE='LSTM'
 DEFAULT_EMBEDDING=512
 GRU_HIDDEN_UNITS = 128
+DENSE_HIDDEN_UNITS = 512
 DEFAULT_BATCH_SIZE = 7000
 DEFAULT_MINIBATCH_SIZE = 128
 MAX_LENGTH = 750
@@ -70,6 +71,8 @@ def defineParser():
                         help='Default type of RNN Cell: LSTM or GRU.')
     parser.add_argument('--hidden', dest='hidden', type=int, default=GRU_HIDDEN_UNITS,
                         help='Number of hidden units per RNN layer')
+    parser.add_argument('--dense', dest='dense', type=int, default=DENSE_HIDDEN_UNITS,
+                        help='Number of hidden units for the fully connected layer')
     parser.add_argument('--decodeOption', dest='decodeOption', type=str, default=DEFAULT_DECODE_OPTION,
                         help='Indicates which method to use for character decoding giving the posterior [GENERATE]')
     parser.add_argument('--epochs', dest='epochs', type=int, default=DEFAULT_EPOCHS,

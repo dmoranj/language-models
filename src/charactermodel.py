@@ -16,7 +16,7 @@ def load_alphabet(path):
 
         return alphabet
 
-def create_model(input_shape, hidden_units, unit_type, opt, layers):
+def create_model(input_shape, hidden_units, dense_hidden, unit_type, opt, layers):
     print("* Creating new model")
 
     _, max_length, char_length = input_shape
@@ -34,7 +34,8 @@ def create_model(input_shape, hidden_units, unit_type, opt, layers):
         for i in range(layers - 1):
             a = GRU(hidden_units, return_sequences=True)(a)
 
-    x = TimeDistributed(Dense(char_length))(a)
+    x = TimeDistributed(Dense(dense_hidden, activation='relu'))(a)
+    x = TimeDistributed(Dense(char_length))(x)
     x = TimeDistributed(Activation('softmax'))(x)
 
     model = Model(inputs=[char_input], outputs=[x])
@@ -125,7 +126,7 @@ def dataset_generator(alphabet, options):
 
 
 def train_model(options):
-    opt = Adam(lr=options.learningRate, beta_1=0.9, beta_2=0.999, decay=0.01)
+    opt = Adam(lr=options.learningRate, beta_1=0.9, beta_2=0.999, decay=0.01, clipnorm=1.0)
 
     if options.load:
         alphabet = load_alphabet(options.alphabetPath)
@@ -134,7 +135,7 @@ def train_model(options):
     else:
         alphabet = create_alphabet()
         model = create_model((options.batchSize, options.maxLength, alphabet['length']), options.hidden,
-                             options.rnnType, opt, options.rnnLayers)
+                             options.dense, options.rnnType, opt, options.rnnLayers)
         model.summary()
 
     save_alphabet(options.alphabetPath, alphabet)
