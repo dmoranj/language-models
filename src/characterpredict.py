@@ -1,74 +1,13 @@
 from keras.layers import *
 from keras.models import Model, load_model
 from charactermodel import load_alphabet
+from keras.utils import to_categorical
 import pandas as pd
 import json
 
 
-def create_prediction_model(model, rnn_type, layers):
-    _, seq_length, char_length = model.input.shape
-
-    input_char = Input((1, char_length.value), name='X')
-
-    rnn_cell = model.layers[1].cell
-    dense_layer = model.layers[layers + 1].layer
-    activation_layer = model.layers[layers + 2].layer
-
-    c0 = Input((1, rnn_cell.units), name='c0')
-
-    inputs = [input_char]
-    outputs = []
-
-    if rnn_type == 'LSTM':
-        a0 = Input((1, rnn_cell.units), name='a0')
-        x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[a0, c0])
-        inputs.append(c0)
-        outputs.append(a)
-        outputs.append(c)
-
-        for i in range(layers - 1):
-            rnn_cell = model.layers[2 + i].cell
-            x = Reshape((1, x.shape[2].value))(x)
-            a0 = Input((1, rnn_cell.units), name='a' + str(i + 1))
-            c0 = Input((1, rnn_cell.units), name='c' + str(i + 1))
-            inputs.append(a0)
-            inputs.append(c0)
-            x, a, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[a0, c0])
-            outputs.append(a)
-            outputs.append(c)
-
-    else:
-        x, c = RNN(rnn_cell, return_state=True, return_sequences=False)(input_char, initial_state=[c0])
-        inputs.append(c0)
-        outputs.append(c)
-
-        for i in range(layers - 1):
-            rnn_cell = model.layers[2 + i].cell
-            x = Reshape((1, x.shape[2].value))(x)
-            c0 = Input((1, rnn_cell.units), name='c' + str(i + 1))
-            inputs.append(c0)
-            x, c = RNN(rnn_cell, return_state=True, return_sequences=False)(x, initial_state=[c0])
-            outputs.append(c)
-
-    x = dense_layer(x)
-    x = activation_layer(x)
-
-    outputs.append(x)
-
-    new_model = Model(inputs=inputs, outputs=outputs)
-
-    return new_model
-
-
-def decode(x, alphabet, option):
-    p = x.tolist()[0]
-
-    if option == 'choice':
-        index = np.random.choice(range(len(p)), p=p/np.sum(p))
-    else:
-        index = np.argmax(p)
-
-    return index, alphabet['i2c'][index]
+def decode(x, alphabet):
+    return alphabet['i2c'][x]
 
 
 def one_hot_char(index, alphabet):
@@ -109,19 +48,10 @@ def reshape_current_state(char_length, inputs, options):
     return inputs
 
 
-def create_initial_states(options, char_length):
-    initial_states = {}
-    for i in range(options.rnnLayers):
-        if options.rnnType == 'LSTM':
-            a0 = np.zeros((1, options.hidden))
-            initial_states['a' + str(i)] = a0
+def create_initial_states(sequence_size, char_length):
+    input = np.zeros((1, sequence_size, char_length))
 
-        c0 = np.zeros((1, options.hidden))
-        initial_states['c' + str(i)] = c0
-
-    initial_states['X'] = np.zeros((1, char_length))
-
-    return initial_states
+    return input
 
 
 def generate(options):
@@ -129,48 +59,39 @@ def generate(options):
 
     _, seq_length, char_length = model.input.shape
 
-    prediction_model = create_prediction_model(model, options.rnnType, options.rnnLayers)
     alphabet = load_alphabet(options.alphabetPath)
 
-    initial_states = create_initial_states(options, char_length)
+    input = create_initial_states(seq_length, char_length)
 
-    global_sum = initial_states['X']
-    output = []
     maximums = []
     minimums = []
     sentence = []
+    final_output = []
 
-    for j in range(10):
-        inputs = initial_states.copy()
+    for j in range(2):
+        for i in range(1, 100):
+            if i % 50 == 0:
+                print('Iteration: {}'.format(i))
 
-        for i in range(options.maxLength):
-            inputs = reshape_current_state(char_length, inputs, options)
-            outputs = prediction_model.predict(inputs)
-            inputs, out, x = parse_outputs(outputs, alphabet, options)
+            output = model.predict(input)
 
-            sentence.append(out)
+            index = np.random.choice(range(1, char_length + 1), p=output[0, i - 1, :])
+            maximums.append(np.amax(output[0, i - 1, :]))
+            minimums.append(np.amin(output[0, i - 1, :]))
 
-            if out == '.':
-                output.append(''.join(sentence))
-                sentence = []
-                break
+            last_char = decode(index, alphabet)
+            input[0, i, :] = to_categorical(index, char_length)
+            sentence.append(last_char)
 
-            maximums.append(np.max(x))
-            minimums.append(np.min(x))
-            global_sum += x
-
-        if len(sentence) > 0:
-            output.append(''.join(sentence) + '.')
-
-    final_output = '\n'.join(output)
+        final_output.append(''.join(sentence))
+        sentence = []
 
     stats = {
         'maximum': maximums,
-        'minimum': minimums,
-        'globalSum': global_sum
+        'minimum': minimums
     }
 
-    return alphabet, final_output, stats
+    return alphabet, '\n'.join(final_output), stats
 
 
 def generation(options):
@@ -188,16 +109,10 @@ def display_result(alphabet, final_output, stats):
     global_max = max(maximums)
     global_min = min(minimums)
 
-    total_weight = np.sum(stats['globalSum'])
-
-    prob_df = pd.DataFrame({'char': alphabet['i2c'], 'p': stats['globalSum'][0]/total_weight})
-    prob_df = prob_df.sort_values(by='p', ascending=False)
-
     print('\nMaximum probability= {}'.format(global_max))
     print('\nMinimum probability= {}'.format(global_min))
     print('\nProbability interval size: {}'.format(global_max - global_min))
     print('\nAlphabet length= {}'.format(alphabet['length']))
     print('\nNon-weigthed base probability= {}'.format(1 / alphabet['length']))
-    print(prob_df)
 
 
