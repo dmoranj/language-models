@@ -1,9 +1,7 @@
 from keras.layers import *
 from keras.models import Model, load_model
-from charactermodel import load_alphabet
 from keras.utils import to_categorical
-import pandas as pd
-import json
+from textutils import load_alphabet
 
 
 def decode(x, alphabet):
@@ -61,27 +59,31 @@ def generate(options):
 
     alphabet = load_alphabet(options.alphabetPath)
 
-    input = create_initial_states(seq_length, char_length)
 
     maximums = []
     minimums = []
     sentence = []
     final_output = []
 
-    for j in range(2):
-        for i in range(1, 100):
+    for j in range(5):
+        input = create_initial_states(seq_length, char_length)
+
+        for i in range(1, seq_length):
             if i % 50 == 0:
                 print('Iteration: {}'.format(i))
 
             output = model.predict(input)
 
-            index = np.random.choice(range(1, char_length + 1), p=output[0, i - 1, :])
+            index = np.random.choice(range(0, char_length), p=output[0, i - 1, :])
             maximums.append(np.amax(output[0, i - 1, :]))
             minimums.append(np.amin(output[0, i - 1, :]))
 
             last_char = decode(index, alphabet)
             input[0, i, :] = to_categorical(index, char_length)
             sentence.append(last_char)
+
+            if last_char == '.':
+                break
 
         final_output.append(''.join(sentence))
         sentence = []
@@ -92,11 +94,6 @@ def generate(options):
     }
 
     return alphabet, '\n'.join(final_output), stats
-
-
-def generation(options):
-    alphabet, final_output, stats = generate(options)
-    display_result(alphabet, final_output, stats)
 
 
 def display_result(alphabet, final_output, stats):
@@ -114,5 +111,11 @@ def display_result(alphabet, final_output, stats):
     print('\nProbability interval size: {}'.format(global_max - global_min))
     print('\nAlphabet length= {}'.format(alphabet['length']))
     print('\nNon-weigthed base probability= {}'.format(1 / alphabet['length']))
+
+
+def generation(options):
+    alphabet, final_output, stats = generate(options)
+    display_result(alphabet, final_output, stats)
+
 
 

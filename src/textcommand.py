@@ -16,7 +16,11 @@ GRU_HIDDEN_UNITS = 128
 DENSE_HIDDEN_UNITS = 512
 DEFAULT_BATCH_SIZE = 7000
 DEFAULT_MINIBATCH_SIZE = 128
-MAX_LENGTH = 750
+DEFAULT_L1 = 0.01
+DEFAULT_L2 = 0.01
+DEFAULT_DROPOUT = 0.1
+
+MAX_LENGTH = 64
 SAVE_PATH = './results/'
 MODEL_FILE = SAVE_PATH + 'charmodelwideanddeep.h5'
 STATS_FILE = SAVE_PATH + 'charmodelwideanddeep.csv'
@@ -83,6 +87,12 @@ def defineParser():
                         help='Embedding dimension (for word models only) [TRAIN].')
     parser.add_argument('--load', dest='load', type=bool, default=False,
                         help='Flat to indicate whether to train a new model or load a new one [TRAIN]')
+    parser.add_argument('--l1', dest='l1', type=float, default=DEFAULT_L1,
+                        help='L1 regularization term')
+    parser.add_argument('--l2', dest='l2', type=float, default=DEFAULT_L2,
+                        help='L2 regularization term')
+    parser.add_argument('--dropout', dest='dropout', type=float, default=DEFAULT_DROPOUT,
+                        help='Amount of dropout at the input of each layer')
 
     return parser
 

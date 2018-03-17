@@ -1,22 +1,18 @@
 from keras.layers import *
 from keras.models import Model, load_model
 from keras.optimizers import Adam
+from keras import regularizers
 from modelutils import save_model
 import numpy as np
 import tokenizedataset as td
 from constants import *
-import json
+from textutils import load_alphabet, save_alphabet
+import characterpredict as cp
 
 ALPHABET_CHARS = "abcdefghijklmnopqrstuvwxyz?!0123456789;:,.()-'\""
 
-def load_alphabet(path):
-    with open(path, 'r') as f:
-        text = f.read()
-        alphabet = json.loads(text)
 
-        return alphabet
-
-def create_model(input_shape, hidden_units, dense_hidden, unit_type, opt, layers):
+def create_model(input_shape, hidden_units, dense_hidden, unit_type, opt, layers, dropout, l1, l2):
     print("* Creating new model")
 
     _, max_length, char_length = input_shape
@@ -24,18 +20,24 @@ def create_model(input_shape, hidden_units, dense_hidden, unit_type, opt, layers
     char_input = Input(shape=(max_length, char_length), name="X")
 
     if unit_type == "LSTM":
-        a = LSTM(hidden_units, return_sequences=True)(char_input)
+        a = LSTM(hidden_units, return_sequences=True, kernel_regularizer=regularizers.l2(l2),
+                 activity_regularizer=regularizers.l1(l1), dropout=dropout)(char_input)
 
         for i in range(layers - 1):
-            a = LSTM(hidden_units, return_sequences=True)(a)
+            a = LSTM(hidden_units, return_sequences=True, kernel_regularizer=regularizers.l2(l2),
+                     activity_regularizer=regularizers.l1(l1), dropout=dropout)(a)
     else:
-        a = GRU(hidden_units, return_sequences=True)(char_input)
+        a = GRU(hidden_units, return_sequences=True, kernel_regularizer=regularizers.l2(l2),
+                activity_regularizer=regularizers.l1(l1), dropout=dropout)(char_input)
 
         for i in range(layers - 1):
-            a = GRU(hidden_units, return_sequences=True)(a)
+            a = GRU(hidden_units, return_sequences=True, kernel_regularizer=regularizers.l2(l2),
+                    activity_regularizer=regularizers.l1(l1), dropout=dropout)(a)
 
-    x = TimeDistributed(Dense(dense_hidden, activation='relu'))(a)
-    x = TimeDistributed(Dense(char_length))(x)
+    x = TimeDistributed(Dense(dense_hidden, activation='relu', kernel_regularizer=regularizers.l2(l2),
+                              activity_regularizer=regularizers.l1(l1)))(a)
+
+    x = TimeDistributed(Dense(char_length, kernel_regularizer=regularizers.l2(l2)))(x)
     x = TimeDistributed(Activation('softmax'))(x)
 
     model = Model(inputs=[char_input], outputs=[x])
@@ -78,6 +80,8 @@ def create_alphabet():
     charset.add('#')
     charlist = list(charset)
 
+    charlist = ['@'] + charlist
+
     alphabet = {
         "length": len(charlist),
         "i2c": charlist,
@@ -113,11 +117,6 @@ def generate_datasets(lines, alphabet, options):
     return final_lines
 
 
-def save_alphabet(path, alphabet):
-    with open(path, 'w') as f:
-        json.dump(alphabet, f)
-
-
 def dataset_generator(alphabet, options):
     while True:
         for lines in td.generate_line_batch(options.datasetPath, options.minibatchSize):
@@ -135,15 +134,21 @@ def train_model(options):
     else:
         alphabet = create_alphabet()
         model = create_model((options.batchSize, options.maxLength, alphabet['length']), options.hidden,
-                             options.dense, options.rnnType, opt, options.rnnLayers)
+                             options.dense, options.rnnType, opt, options.rnnLayers, options.dropout,
+                             options.l2, options.l1)
         model.summary()
 
-    save_alphabet(options.alphabetPath, alphabet)
+        save_alphabet(options.alphabetPath, alphabet)
+
     data_source = dataset_generator(alphabet, options)
+
+    model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=["accuracy"])
 
     for i in range(options.iterations):
         history = model.fit_generator(data_source, steps_per_epoch=options.batchSize,
                                       epochs=options.epochs, verbose=1)
         save_model(model, history, options)
+
+        cp.generation(options)
 
 
